@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3-Agent Stock Hunter</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:#050a14;background-image:radial-gradient(ellipse at 20% 20%,#0d1f3c,transparent 60%),radial-gradient(ellipse at 80% 80%,#1a0a1f,transparent 60%);font-family:'Noto Sans Thai',sans-serif;padding:24px 18px;color:#fff}
+@keyframes scanline{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:4px}
+
+.header{text-align:center;margin-bottom:20px}
+.badge{display:inline-block;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:3px 12px;font-size:10px;color:rgba(255,255,255,0.35);font-family:'Share Tech Mono',monospace;margin-bottom:8px;letter-spacing:2px}
+h1{font-size:24px;font-weight:700}
+
+.uni-box{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.uni-title{font-size:11px;color:rgba(255,255,255,0.35);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:10px}
+.uni-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.uni-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.4);padding:6px 14px;font-size:12px;font-family:'Share Tech Mono',monospace;font-weight:600;cursor:pointer;transition:all 0.2s}
+.uni-btn:hover{border-color:rgba(255,255,255,0.25);color:rgba(255,255,255,0.8)}
+.uni-btn.sel-sset{background:rgba(0,212,255,0.12);border-color:#00d4ff;color:#00d4ff}
+.uni-btn.sel-set100{background:rgba(245,158,11,0.12);border-color:#f59e0b;color:#f59e0b}
+.uni-btn.sel-both{background:rgba(74,222,128,0.1);border-color:#4ade80;color:#4ade80}
+.uni-info{font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px;font-family:'Share Tech Mono',monospace}
+.pills{display:flex;flex-wrap:wrap;gap:3px;max-height:76px;overflow-y:auto}
+.pill{border-radius:5px;padding:2px 6px;font-size:10px;font-family:'Share Tech Mono',monospace;font-weight:600}
+.pill-sset{background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:#00d4ff}
+.pill-set100{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);color:#f59e0b}
+.pill-both{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#4ade80}
+
+.btn-run{display:block;margin:0 auto 20px;background:linear-gradient(135deg,rgba(0,212,255,0.12),rgba(255,77,109,0.12));border:1px solid rgba(255,100,130,0.45);border-radius:12px;color:#fff;padding:12px 32px;font-size:15px;font-family:'Noto Sans Thai',sans-serif;font-weight:600;cursor:pointer;transition:all 0.3s}
+.btn-run:disabled{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.07);color:rgba(255,255,255,0.2);cursor:not-allowed}
+
+.agent-card{border-radius:16px;padding:18px 22px;margin-bottom:14px;transition:all 0.4s;position:relative;overflow:hidden}
+.agent-card.pending{opacity:0.4}
+.agent-header{display:flex;align-items:center;gap:12px}
+.avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.agent-name{font-weight:700;font-size:14px}
+.agent-role{color:rgba(255,255,255,0.35);font-size:11px;font-family:'Share Tech Mono',monospace}
+.agent-stat{margin-left:auto;font-size:18px}
+.agent-out{background:rgba(0,0,0,0.35);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px;line-height:1.85;color:rgba(255,255,255,0.88);white-space:pre-wrap;max-height:280px;overflow-y:auto;display:none}
+.scanline{position:absolute;top:0;left:0;right:0;height:2px;animation:scanline 1.5s linear infinite;display:none}
+.dots{display:inline-flex;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+
+/* agent themes */
+.ag1{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.07)}
+.ag1.active{border-color:rgba(0,212,255,0.3)}
+.ag1 .avatar{background:rgba(0,212,255,0.15);border:1.5px solid #00d4ff}
+.ag1 .agent-name{color:#00d4ff}
+.ag1 .scanline{background:linear-gradient(90deg,transparent,#00d4ff,transparent)}
+.ag1.active .avatar{box-shadow:0 0 10px rgba(0,212,255,0.4)}
+
+.ag2{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.07)}
+.ag2.active{border-color:rgba(245,158,11,0.3)}
+.ag2 .avatar{background:rgba(245,158,11,0.15);border:1.5px solid #f59e0b}
+.ag2 .agent-name{color:#f59e0b}
+.ag2 .scanline{background:linear-gradient(90deg,transparent,#f59e0b,transparent)}
+.ag2.active .avatar{box-shadow:0 0 10px rgba(245,158,11,0.4)}
+
+.ag3{background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.07)}
+.ag3.active{border-color:rgba(255,77,109,0.3)}
+.ag3 .avatar{background:rgba(255,77,109,0.15);border:1.5px solid #ff4d6d}
+.ag3 .agent-name{color:#ff4d6d}
+.ag3 .scanline{background:linear-gradient(90deg,transparent,#ff4d6d,transparent)}
+.ag3.active .avatar{box-shadow:0 0 10px rgba(255,77,109,0.4)}
+
+.disclaimer{text-align:center;margin-top:6px;padding:8px 14px;background:rgba(255,77,109,0.05);border:1px solid rgba(255,77,109,0.12);border-radius:10px;color:rgba(255,255,255,0.25);font-size:11px;animation:fadeIn 0.5s ease;display:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge" id="dateBadge">SET STOCK HUNTER</div>
+  <h1>🤖 3-Agent Stock Hunter</h1>
+</div>
+
+<!-- Universe -->
+<div class="uni-box">
+  <div class="uni-title">📊 เลือก UNIVERSE</div>
+  <div class="uni-btns">
+    <button class="uni-btn" id="btn-sset"   onclick="selectUni('sset')">sSET <span style="opacity:.5;font-size:10px">(99)</span></button>
+    <button class="uni-btn" id="btn-set100" onclick="selectUni('set100')">SET100 <span style="opacity:.5;font-size:10px">(97)</span></button>
+    <button class="uni-btn" id="btn-both"   onclick="selectUni('both')">sSET + SET100 <span style="opacity:.5;font-size:10px">(195)</span></button>
+  </div>
+  <div class="uni-info" id="uniInfo">← เลือก universe</div>
+  <div class="pills" id="pills"></div>
+</div>
+
+<!-- Run -->
+<button class="btn-run" id="btnRun" onclick="runPipeline()" disabled>⬆️ เลือก Universe ก่อน</button>
+
+<!-- Agents -->
+<div class="agent-card ag1 pending" id="card1">
+  <div class="scanline" id="scan1"></div>
+  <div class="agent-header">
+    <div class="avatar">🔍</div>
+    <div><div class="agent-name">Agent 1: ชยกร</div><div class="agent-role">นักคัดกรองหุ้น</div></div>
+    <div class="agent-stat" id="stat1">○</div>
+  </div>
+  <div class="agent-out" id="out1"></div>
+</div>
+
+<div class="agent-card ag2 pending" id="card2">
+  <div class="scanline" id="scan2"></div>
+  <div class="agent-header">
+    <div class="avatar">📰</div>
+    <div><div class="agent-name">Agent 2: วศรัญ</div><div class="agent-role">นักวิเคราะห์ข่าว</div></div>
+    <div class="agent-stat" id="stat2">○</div>
+  </div>
+  <div class="agent-out" id="out2"></div>
+</div>
+
+<div class="agent-card ag3 pending" id="card3">
+  <div class="scanline" id="scan3"></div>
+  <div class="agent-header">
+    <div class="avatar">⚡</div>
+    <div><div class="agent-name">Agent 3: บอส ฒ</div><div class="agent-role">ผู้ฟันธง</div></div>
+    <div class="agent-stat" id="stat3">○</div>
+  </div>
+  <div class="agent-out" id="out3"></div>
+</div>
+
+<div class="disclaimer" id="disclaimer">⚠️ วิเคราะห์เบื้องต้นเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+
+<script>
+const API   = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-20250514";
+const CLR   = {sset:"#00d4ff", set100:"#f59e0b", both:"#4ade80"};
+
+const SSET   = ["AAI","ADVICE","AH","AIT","ASIAN","ASK","AU","AUCT","BAY","BEAUTY","BGC","BJC","BKI","BLA","BLAND","BROOK","BTG","BUI","BWG","CBG","CCET","CENTEL","CGH","CHG","CHOTE","CK","COM7","CRANE","CSL","CSS","CWT","DCON","DELTA","DIF","DIMET","DRT","DTC","DUSIT","EA","EAST","ECF","EGCO","EPCO","ERW","ESSO","FNS","FORTH","GFPT","GLOBAL","GOLD","GPSC","GYT","HANA","HMPRO","HPT","IHL","IVL","JAS","JMART","JMT","JTS","JWD","KBANK","KCE","KKP","KTIS","KTB","KTC","LH","LPN","M","MEGA","METCO","MINT","MOBI","MOSHI","MTC","NDR","NER","NKI","NOBLE","OR","OSP","PLANB","PR9","PRM","PTG","PTT","PTTEP","PTTGC","QH","RATCH","RCL","RJH","ROBINS","RS","SAF","SAPPE","SAWAD","SCB","SCC","SCGP","SIRI","SISB","SJWD","SPALI","SPRC","STA","STECON","STGT","SYNEX","TASCO","TCAP","TFG","THAI","TISCO","TLI","TOA","TOP","TQM","TRUE","TRT","TTB","TU","TVO","VGI","WHA","WHAUP","ZEN"];
+const SET100 = ["AAV","ADVANC","AEONTS","AMATA","AOT","AP","AURA","AWC","BA","BAM","BANPU","BBL","BCH","BCP","BCPG","BDMS","BEM","BGRIM","BH","BJC","BLA","BTG","BTS","CBG","CCET","CENTEL","CHG","CK","COM7","CPALL","CPF","CPN","CRC","DELTA","DOHOME","EA","EGCO","ERW","GFPT","GLOBAL","GPSC","GUNKUL","HANA","HMPRO","ICHI","IRPC","IVL","JAS","JMART","JMT","JTS","KBANK","KCE","KKP","KTB","KTC","LH","M","MEGA","MINT","MOSHI","MTC","OR","OSP","PLANB","PR9","PRM","PTG","PTT","PTTEP","PTTGC","QH","RATCH","RCL","SAWAD","SCB","SCC","SCGP","SIRI","SISB","SJWD","SPALI","SPRC","STA","STECON","STGT","TASCO","TCAP","TFG","TISCO","TLI","TOA","TOP","TTB","TU","VGI","WHA"];
+const BOTH   = [...new Set([...SSET,...SET100])].sort();
+const POOLS  = {sset:SSET, set100:SET100, both:BOTH};
+
+let curUni=null, symbols=[], running=false;
+const today = new Date().toLocaleDateString("th-TH",{day:"numeric",month:"long",year:"numeric"});
+document.getElementById("dateBadge").textContent = "SET · "+today;
+
+function selectUni(u){
+  curUni=u; symbols=POOLS[u];
+  ["sset","set100","both"].forEach(x=>{
+    document.getElementById("btn-"+x).className = "uni-btn"+(x===u?" sel-"+x:"");
+  });
+  document.getElementById("uniInfo").textContent =
+    {sset:"sSET",set100:"SET100",both:"sSET+SET100"}[u]+" : "+symbols.length+" ตัว";
+  const pc = "pill-"+u;
+  document.getElementById("pills").innerHTML =
+    symbols.map(s=>`<span class="pill ${pc}">${s}</span>`).join("");
+  const b=document.getElementById("btnRun");
+  b.disabled=false; b.textContent="🚀 วิเคราะห์ 3 Agent";
+}
+
+function setState(n, state, text=""){
+  const c=document.getElementById("card"+n);
+  const sc=document.getElementById("scan"+n);
+  const st=document.getElementById("stat"+n);
+  const o=document.getElementById("out"+n);
+  const clrs=["#00d4ff","#f59e0b","#ff4d6d"];
+  c.classList.remove("pending","active"); sc.style.display="none"; st.style.color="";
+  if(state==="run"){
+    c.classList.add("active"); sc.style.display="block";
+    st.innerHTML=`<span class="dots">${[0,1,2].map(i=>`<span class="dot" style="background:${clrs[n-1]};animation:bounce 0.8s ease-in-out ${i*0.15}s infinite"></span>`).join("")}</span>`;
+  } else if(state==="done"){
+    c.classList.add("active"); st.textContent="✓"; st.style.color="#4ade80";
+    o.textContent=text; o.style.display="block";
+  } else {
+    c.classList.add("pending"); st.textContent="○"; st.style.color="rgba(255,255,255,0.15)";
+    o.style.display="none";
+  }
+}
+
+async function call(system, user){
+  const r = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:MODEL,max_tokens:800,system,messages:[{role:"user",content:user}]})});
+  const d = await r.json();
+  return (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
+}
+
+async function runPipeline(){
+  if(running||!symbols.length) return;
+  running=true;
+  const btn=document.getElementById("btnRun");
+  btn.disabled=true; btn.textContent="🔄 กำลังวิเคราะห์...";
+  document.getElementById("disclaimer").style.display="none";
+  [1,2,3].forEach(n=>setState(n,"pending"));
+
+  const uniLabel = {sset:"sSET",set100:"SET100",both:"sSET+SET100"}[curUni];
+  const stockStr = symbols.join(", ");
+
+  // Agent 1: ชยกร
+  setState(1,"run");
+  const a1 = await call(
+    `คุณคือ "ชยกร" คัดกรองหุ้น SET ตอบภาษาไทย
+แบ่งเป็น 2 กลุ่ม:
+### 🟢🟢 g2s — HA เขียว 2 แท่ง (สัญญาณแรงกว่า) | X ตัว
+- **SYMBOL** ราคา฿ ~XM — sector (เหตุผลสั้น)
+### 🟢 g1s — HA เขียวแท่งแรก (สัญญาณเริ่มต้น) | X ตัว
+- **SYMBOL** ราคา฿ ~XM — sector
+คัดเฉพาะ market cap 5,000–50,000M ประเมินจากความรู้ ไม่เกิน 10 ตัวรวม`,
+    `Universe: ${uniLabel} (${symbols.length} ตัว) วันที่ ${today}\nหุ้นทั้งหมด: ${stockStr}`
+  );
+  setState(1,"done",a1);
+
+  // Agent 2: วศรัญ
+  setState(2,"run");
+  const a2 = await call(
+    `คุณคือ "วศรัญ" วิเคราะห์ catalyst หุ้นไทย ตอบภาษาไทย
+รูปแบบ:
+1. **SYMBOL** 🔴สูง/🟡กลาง/⚪ต่ำ — [catalyst สั้นๆ 1 บรรทัด]
+เฉพาะตัวที่ชยกรเลือก เรียงจาก impact มากไปน้อย`,
+    `ผล ชยกร:\n${a1}`
+  );
+  setState(2,"done",a2);
+
+  // Agent 3: บอส ฒ
+  setState(3,"run");
+  const a3 = await call(
+    `คุณคือ "บอส ฒ" ฟันธงหุ้น ตอบภาษาไทย
+รูปแบบ:
+## 🥇 อันดับ N | SYMBOL @ ราคา฿
+**เหตุผล:** [TA + catalyst 1 บรรทัด]
+**เป้าหมาย:** X฿
+**Stop Loss:** X฿
+**ความเชื่อมั่น:** ⭐⭐⭐
+---
+TOP 3 เท่านั้น โอกาสวิ่ง 1–2 สัปดาห์`,
+    `ชยกร:\n${a1}\nวศรัญ:\n${a2}`
+  );
+  setState(3,"done",a3);
+
+  btn.disabled=false; btn.textContent="🔁 วิเคราะห์ใหม่";
+  document.getElementById("disclaimer").style.display="block";
+  running=false;
+}
+</script>
+</body>
+</html>
